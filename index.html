@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>의약품 제조유형 확인 시스템</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --accent: #3fb950;
+    --accent2: #58a6ff;
+    --warn: #d29922;
+    --danger: #f85149;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #656d76;
+    --self: #3fb950;
+    --contract: #58a6ff;
+    --bio: #bc8cff;
+    --bio-bg: rgba(188,140,255,0.12);
+    --self-bg: rgba(63,185,80,0.12);
+    --contract-bg: rgba(88,166,255,0.12);
+    --unknown-bg: rgba(139,148,158,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    color: #0d1117;
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 15px; font-weight: 500; letter-spacing: -0.3px; }
+  .header-sub { font-size: 12px; color: var(--text3); margin-left: auto; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── Layout ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── API Key Section ── */
+  .api-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .api-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .api-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .api-input:focus { border-color: var(--accent2); }
+  .api-input::placeholder { color: var(--text3); }
+  .api-hint {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+  .api-hint a { color: var(--accent2); text-decoration: none; }
+  .api-hint a:hover { text-decoration: underline; }
+
+  /* ── Search Section ── */
+  .search-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .search-row {
+    display: flex;
+    gap: 10px;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-input:focus { border-color: var(--accent2); }
+  .search-input::placeholder { color: var(--text3); }
+  .btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent2);
+    color: #0d1117;
+  }
+  .btn-primary:hover { background: #79c0ff; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { background: var(--border); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  /* ── Single Result ── */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    animation: fadeIn .3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .result-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .drug-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    flex: 1;
+  }
+  .drug-maker {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 3px;
+  }
+  .badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .badge-self { background: var(--self-bg); color: var(--self); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-contract { background: var(--contract-bg); color: var(--contract); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-bio { background: var(--bio-bg); color: var(--bio); border: 1px solid rgba(188,140,255,0.3); }
+  .badge-unknown { background: var(--unknown-bg); color: var(--text2); border: 1px solid var(--border); }
+  .badge-nobio { background: rgba(139,148,158,0.08); color: var(--text3); border: 1px solid var(--border); font-weight: 400; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .result-field {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .field-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 500; }
+  .field-value { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .field-value.mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── Excel Section ── */
+  .excel-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent2);
+    background: rgba(88,166,255,0.05);
+  }
+  .drop-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.6; }
+  .drop-text { font-size: 14px; color: var(--text2); }
+  .drop-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .excel-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .col-selector {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    outline: none;
+    min-width: 160px;
+  }
+  .col-selector:focus { border-color: var(--accent2); }
+  .progress-bar-wrap {
+    flex: 1;
+    min-width: 200px;
+  }
+  .progress-label {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width .3s ease;
+  }
+
+  /* ── Bulk Table ── */
+  .table-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .table-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .table-title { font-size: 14px; font-weight: 600; }
+  .table-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .stat-item { display: flex; align-items: center; gap: 5px; }
+  .stat-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .dot-self { background: var(--self); }
+  .dot-contract { background: var(--contract); }
+  .dot-bio { background: var(--bio); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    transition: background .1s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  tbody tr:last-child { border-bottom: none; }
+  td {
+    padding: 11px 14px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  td.mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  .row-status-self td:first-child { border-left: 3px solid var(--self); }
+  .row-status-contract td:first-child { border-left: 3px solid var(--contract); }
+  .row-status-unknown td:first-child { border-left: 3px solid var(--border); }
+  .row-status-error td:first-child { border-left: 3px solid var(--danger); }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .btn-export {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-sm {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+
+  /* error / empty state */
+  .state-msg {
+    text-align: center;
+    padding: 40px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .nedrug-link {
+    display: block;
+    margin: 14px 0 2px 0;
+    padding: 10px 16px;
+    background: rgba(88,166,255,0.08);
+    border: 1px solid rgba(88,166,255,0.25);
+    border-radius: 8px;
+    color: var(--accent2);
+    font-size: 13px;
+    text-decoration: none;
+    text-align: center;
+    transition: background .15s;
+  }
+  .nedrug-link:hover {
+    background: rgba(88,166,255,0.18);
+    border-color: var(--accent2);
+  }
+  .error-msg { color: var(--danger); }
+
+  /* tooltip */
+  [data-tip] { position: relative; cursor: help; }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d333b;
+    color: var(--text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s;
+    border: 1px solid var(--border);
+    z-index: 99;
+  }
+  [data-tip]:hover::after { opacity: 1; }
+
+  .tab-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 9px 16px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .notice-box {
+    background: rgba(210,153,34,0.1);
+    border: 1px solid rgba(210,153,34,0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #d29922;
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">Rx</div>
+  <span class="header-title">의약품 제조유형 확인 시스템</span>
+  <span class="header-sub">nedrug.mfds.go.kr API</span>
+</header>
+
+<div class="container">
+
+    <div class="api-row">
+      <input class="api-input" id="apiKey" type="password"
+        placeholder="Decoding 키 (URL 인코딩 없는 일반 키) 입력...">
+      <button class="btn btn-primary btn-sm" onclick="saveKey()">저장</button>
+    </div>
+    <p class="api-hint">
+      🔑 <a href="https://www.data.go.kr/data/15095677/openapi.do" target="_blank">공공데이터포털</a>에서
+      「의약품 제품 허가정보」 및 「생동성시험자료제출의약품 정보」 서비스 신청 후 Decoding 키 사용.
+      입력값은 브라우저 내에만 저장됩니다.
+    </p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="switchTab('single')">🔍 단건 검색</button>
+    <button class="tab-btn" onclick="switchTab('bulk')">📂 엑셀 일괄 조회</button>
+  </div>
+
+  <!-- SINGLE TAB -->
+  <div id="tab-single" class="tab-pane active">
+    <div class="search-section">
+      <div class="section-label">제품명 검색</div>
+      <div class="notice-box">
+        ℹ️ <strong>자사 vs 위탁 판별 방법:</strong> 허가 업체명(판매사)과 제조원이 동일하면 <b>자사생산</b>, 다르면 <b>위탁생산</b>으로 분류합니다.
+        생동성인정품목은 식약처 별도 API로 확인합니다.<br>
+        ⚡ <strong>식품의약품안전처 공공데이터 기반</strong> — 의약품 자사/위탁/생동성 실시간 조회 서비스
+      </div>
+      <div class="search-row">
+        <input class="search-input" id="drugSearch" placeholder="예) 아모잘탄정, 리피로우캡슐, 플라빅스정..."
+          onkeydown="if(event.key==='Enter') searchSingle()">
+        <button class="btn btn-primary" id="searchBtn" onclick="searchSingle()">검색</button>
+      </div>
+    </div>
+    <div id="singleResult"></div>
+  </div>
+
+  <!-- BULK TAB -->
+  <div id="tab-bulk" class="tab-pane">
+    <div class="excel-section">
+      <div class="section-label">엑셀 파일 업로드</div>
+      <div class="notice-box">
+        📋 제품명이 입력된 엑셀(.xlsx, .xls) 또는 CSV 파일을 업로드하세요. 열 선택 후 일괄 조회합니다.
+        API 속도 제한으로 인해 검색 간 0.5초 딜레이가 적용됩니다.
+      </div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+        <div class="drop-icon">📄</div>
+        <div class="drop-text">파일을 드래그하거나 클릭해서 업로드</div>
+        <div class="drop-sub">.xlsx / .xls / .csv 지원</div>
+      </div>
+      <div class="excel-controls" id="excelControls" style="display:none">
+        <div>
+          <div class="field-label" style="margin-bottom:4px">제품명 열 선택</div>
+          <select class="col-selector" id="colSelect"></select>
+        </div>
+        <button class="btn btn-primary" onclick="runBulk()">일괄 조회 시작</button>
+        <button class="btn btn-export" onclick="stopBulk()">⏹ 중지</button>
+      </div>
+    </div>
+    <div id="bulkProgress" style="display:none" class="api-section" style="margin-bottom:24px">
+      <div class="progress-label">
+        <span id="progressText">처리 중...</span>
+        <span id="progressCount">0 / 0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div id="bulkResult"></div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────
+let API_KEY  = localStorage.getItem('pharmaApiKey') || '';
+let bulkData = [], bulkColumns = [], stopFlag = false;
+const PROXY  = '';
+
+// ── 확인된 엔드포인트 ──────────────────────────
+const EP_DRUG_LIST = '/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnInq07';
+const EP_DRUG_DTL  = '/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnDtlInq06';
+const EP_BIO       = '/1471000/MdcBioEqInfoService01/getMdcBioEqList01';
+
+// ── Init ───────────────────────────────────────
+window.onload = () => { setupDrop(); };
+
+async function checkProxy() {
+  const el = document.getElementById('proxyStatus');
+  try {
+    await fetch(PROXY + '/ping');
+    el.textContent = '🟢 프록시 연결됨';
+    el.style.color = 'var(--accent)';
+  } catch(e) {
+    el.textContent = '🔴 프록시 미연결 — 프록시_실행.bat 실행 필요';
+    el.style.color = 'var(--danger)';
+  }
+}
+
+function getKey() { return ""; }
+  return API_KEY;
+}
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) =>
+    b.classList.toggle('active',(i===0&&tab==='single')||(i===1&&tab==='bulk')));
+  document.getElementById('tab-single').classList.toggle('active', tab==='single');
+  document.getElementById('tab-bulk').classList.toggle('active',  tab==='bulk');
+}
+
+// ── API 호출 (프록시 경유) ─────────────────────
+async function govAPI(endpoint, params) {
+  const qs = new URLSearchParams({ endpoint, numOfRows:'20', pageNo:'1', ...params }).toString();
+  const res = await fetch('/api/proxy?' + qs);
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); }
+  catch(e) { throw new Error('서버 오류: ' + text.substring(0,80)); }
+  const code = json?.header?.resultCode || json?.body?.resultCode;
+  if (code && code !== '00') {
+    const msgs = {'22':'서비스 오류','30':'키 오류','31':'기간만료','99':'기타오류'};
+    throw new Error('API 오류 [' + code + '] ' + (msgs[code]||''));
+  }
+  return json?.body?.items || [];
+}
+
+// 용량 표현 제거: 10mg, 5밀리그램, 0.5g 등
+function stripDose(name) {
+  return name
+    .replace(/\d+(\.\d+)?\s*(mg|밀리그램|mcg|마이크로그램|g|그램|ml|밀리리터|ug|IU|단위|%)/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function fetchDrugDetails(items) {
+  return Promise.all(items.map(async item => {
+    try {
+      const dtl = await govAPI(EP_DRUG_DTL, { item_seq: item.ITEM_SEQ || item.itemSeq });
+      return dtl.length ? Object.assign({}, item, dtl[0]) : item;
+    } catch(e) { return item; }
+  }));
+}
+
+async function queryDrug(name) {
+  // 1차 시도: 원본 검색어
+  let items = await govAPI(EP_DRUG_LIST, { item_name: name });
+
+  // 2차 시도: 결과 없으면 용량 제거 후 재검색
+  if (!items.length) {
+    const stripped = stripDose(name);
+    if (stripped && stripped !== name) {
+      items = await govAPI(EP_DRUG_LIST, { item_name: stripped });
+    }
+  }
+
+  if (!items.length) return null;
+  return fetchDrugDetails(items);
+}
+async function queryBio(name) {
+  // 품목명으로 생동성 조회 시도
+  try {
+    const byName = await govAPI(EP_BIO, { item_name: name });
+    if (byName.length) return byName;
+  } catch(e) {}
+  try {
+    const byName2 = await govAPI(EP_BIO, { ITEM_NAME: name });
+    if (byName2.length) return byName2;
+  } catch(e) {}
+  return [];
+}
+// ITEM_SEQ로 생동성 직접 조회
+async function queryBioBySeq(seq) {
+  try {
+    const items = await govAPI(EP_BIO, { item_seq: seq });
+    if (items.length) return items;
+    const items2 = await govAPI(EP_BIO, { ITEM_SEQ: seq });
+    return items2;
+  } catch(e) { return []; }
+}
+
+// ── 자사/위탁 판별 ──────────────────────────────
+function classify(item) {
+  if (!item) return 'unknown';
+  // 1순위: CNSGN_MANUF(수탁제조원) 있으면 위탁생산
+  if (item.CNSGN_MANUF && item.CNSGN_MANUF.trim()) return 'contract';
+  // 2순위: MAKE_MATERIAL_FLAG 문자열 판별
+  // "완제가능" = 자사직접제조, null/없음 = 위탁
+  const flag = (item.MAKE_MATERIAL_FLAG || '').trim();
+  if (flag === '완제가능') return 'self';
+  if (flag === '위탁') return 'contract';
+  // 3순위: INDUTY_TYPE 업종으로 추정
+  const induty = item.INDUTY_TYPE || item.INDUTY || '';
+  if (induty.includes('제조')) return 'self';
+  if (induty.includes('수입')) return 'contract';
+  return 'unknown';
+}
+function norm(s) {
+  return s.replace(/(주)|(유)|(사)|주식회사|유한회사|㈜/g,'').replace(/\s+/g,'').toLowerCase();
+}
+
+// ── 단건 검색 ──────────────────────────────────
+async function searchSingle() {
+  const q = document.getElementById('drugSearch').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true; btn.textContent = '조회 중...';
+  document.getElementById('singleResult').innerHTML =
+    '<div class="state-msg"><span class="spinner"></span> 조회 중...</div>';
+  try {
+    const [drugR, bioR] = await Promise.allSettled([queryDrug(q), queryBio(q)]);
+    const drugs = drugR.status==='fulfilled' ? drugR.value : null;
+    const bios  = bioR.status ==='fulfilled' ? bioR.value  : [];
+    const err   = drugR.status==='rejected'  ? drugR.reason.message : null;
+    renderSingle(q, drugs, bios, err);
+  } catch(e) {
+    document.getElementById('singleResult').innerHTML =
+      '<div class="result-card"><p class="error-msg">오류: '+e.message+'</p></div>';
+  } finally { btn.disabled=false; btn.textContent='검색'; }
+}
+
+function renderSingle(query, drugs, bios, errMsg) {
+  if (!drugs || !drugs.length) {
+    document.getElementById('singleResult').innerHTML =
+      '<div class="result-card"><div class="state-msg">'
+      +(errMsg?'<span class="error-msg">오류: '+errMsg+'</span>':'"'+query+'" 품목을 찾지 못했습니다.')
+      +'</div></div>';
+    return;
+  }
+  // 생동성 품목 ITEM_SEQ 및 품목명 목록
+  const bioSeqs  = new Set((bios||[]).map(b=>b.ITEM_SEQ||b.itemSeq||''));
+  const bioNames = (bios||[]).map(b=>(b.ITEM_NAME||b.itemName||'').toLowerCase());
+
+  const cards = drugs.map(drug => {
+    const mfgType  = classify(drug);
+    const sellerNm = drug.ENTP_NAME       || drug.entpName       || '-';
+    // CNSGN_MANUF=수탁제조원(위탁), 없으면 자사생산(허가업체가 직접 제조)
+    const mfgTypeTmp = classify(drug);
+    const makerNm = drug.CNSGN_MANUF && drug.CNSGN_MANUF.trim()
+      ? drug.CNSGN_MANUF
+      : mfgTypeTmp === 'self'
+        ? (drug.ENTP_NAME || '-') + ' (자사제조)'
+        : mfgTypeTmp === 'contract'
+          ? (drug.INDUTY_TYPE||drug.INDUTY||'수입')
+          : '-';
+    const itemNm   = drug.ITEM_NAME       || drug.itemName       || query;
+    const itemSeq  = drug.ITEM_SEQ        || drug.itemSeq        || '-';
+    const apprDate = drug.ITEM_PERMIT_DATE|| drug.itemPermitDate || '';
+    const chartNm  = drug.CHART || '-';  // 성상 (CHART 필드)
+    const packUnit  = drug.PACK_UNIT || drug.packUnit || '-';  // 포장규격
+    const ingr     = drug.MAIN_ITEM_INGR  || drug.mainItemIngr   || '-';
+    const mfgLabel = {self:'자사생산',contract:'위탁생산',unknown:'확인필요'}[mfgType];
+    const mfgBadge = 'badge-'+(mfgType==='unknown'?'unknown':mfgType);
+    // ITEM_SEQ 우선 매칭, fallback으로 품목명 매칭
+    const seq = drug.ITEM_SEQ || drug.itemSeq || '';
+    const isBio = bioSeqs.has(seq) || bioNames.some(bn =>
+      bn === itemNm.toLowerCase()
+    );
+    const bioItem = isBio ? (bios||[]).find(b=>
+      (b.ITEM_SEQ||b.itemSeq||'') === seq ||
+      (b.ITEM_NAME||b.itemName||'').toLowerCase() === itemNm.toLowerCase()
+    ) : null;
+
+    return '<div class="result-card">'
+      +'<div class="result-header">'
+      +  '<div><div class="drug-name">'+itemNm+'</div>'
+      +  '<div class="drug-maker">'+sellerNm+'</div></div>'
+      +  '<div class="badges">'
+      +    '<span class="badge '+mfgBadge+'">'+mfgLabel+'</span>'
+      +    (isBio?'<span class="badge badge-bio">생동성인정품목 ✓</span>'
+               :'<span class="badge badge-nobio">생동성 미해당</span>')
+      +  '</div>'
+      +'</div>'
+      +'<div class="result-grid">'
+      +  fd('포장규격', packUnit)
+      +  fd('허가(변경)일', fmtDate(apprDate))
+      +  fd('허가업체 (판매사)', sellerNm)
+      +  fd('제조원', makerNm)
+      +  fd('성상', chartNm.substring(0,80))
+      +  fd('주성분', ingr.substring(0,120))
+      +  (bioItem
+        ? fd('생동성 고시일', fmtDate(bioItem.BIOEQ_PRODT_NOTICE_DATE||''),'var(--bio)')
+        + fd('주성분(생동)', bioItem.INGR_KOR_NAME||'-','var(--bio)')
+        : '')
+      +'</div>'
+      + (itemSeq && itemSeq !== '-'
+        ? '<a href="https://nedrug.mfds.go.kr/pbp/CCBBB01/getItemDetail?itemSeq='+itemSeq+'" '
+          + 'target="_blank" class="nedrug-link">🔗 의약품안전나라에서 상세 확인</a>'
+        : '')
+      +'</div>';
+  }).join('');
+
+  const count = drugs.length;
+  document.getElementById('singleResult').innerHTML =
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:10px">검색 결과 '+count+'건</div>'
+    + cards;
+}
+function fd(label, val, color) {
+  const bs = color?'style="border-color:rgba(188,140,255,0.3)"':'';
+  const ls = color?'style="color:'+color+'"':'';
+  return '<div class="result-field" '+bs+'>'
+    +'<div class="field-label" '+ls+'>'+label+'</div>'
+    +'<div class="field-value">'+val+'</div></div>';
+}
+
+// ── 파일 처리 ──────────────────────────────────
+function setupDrop() {
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',  ()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e=>{
+    e.preventDefault(); dz.classList.remove('dragover');
+    if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+  });
+}
+function handleFile(e){ if(e.target.files[0]) processFile(e.target.files[0]); }
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb   = XLSX.read(e.target.result,{type:file.name.endsWith('.csv')?'string':'array'});
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+      if (!data||data.length<2){alert('데이터가 없습니다.');return;}
+      bulkColumns = data[0].map((c,i)=>({idx:i,name:c||('열'+(i+1))}));
+      bulkData    = data.slice(1).filter(r=>r.some(c=>c));
+      const sel   = document.getElementById('colSelect');
+      sel.innerHTML = bulkColumns.map(c=>'<option value="'+c.idx+'">'+c.name+'</option>').join('');
+      document.getElementById('excelControls').style.display='flex';
+      document.getElementById('dropZone').querySelector('.drop-text').textContent=
+        '✅ '+file.name+' ('+bulkData.length+'행)';
+    } catch(ex){alert('파일 읽기 실패: '+ex.message);}
+  };
+  if(file.name.endsWith('.csv')) reader.readAsText(file,'UTF-8');
+  else reader.readAsArrayBuffer(file);
+}
+
+// ── 일괄 조회 ──────────────────────────────────
+async function runBulk() {
+  if(!bulkData.length){alert('파일을 먼저 업로드하세요.');return;}
+  const colIdx = parseInt(document.getElementById('colSelect').value);
+  const names  = [...new Set(bulkData.map(r=>(r[colIdx]||'').toString().trim()).filter(Boolean))];
+  if(!names.length){alert('선택한 열에 데이터가 없습니다.');return;}
+  stopFlag = false;
+  const results = [];
+  document.getElementById('bulkProgress').style.display='block';
+  document.getElementById('bulkResult').innerHTML='';
+  for(let i=0;i<names.length;i++){
+    if(stopFlag) break;
+    const name = names[i];
+    setProgress(i+1,names.length,name);
+    try {
+      const [drugR,bioR] = await Promise.allSettled([queryDrug(name),queryBio(name)]);
+      const drugArr = drugR.status==='fulfilled'?drugR.value:null;
+      const bioArr  = bioR.status ==='fulfilled'?bioR.value :[];
+      const drug = drugArr && drugArr.length ? drugArr[0] : null;
+      const bio  = bioArr  && bioArr.length  ? bioArr[0]  : null;
+      results.push({
+        name, found:!!drug,
+        itemNm:   (drug&&(drug.ITEM_NAME    ||drug.itemName))    ||name,
+        sellerNm: (drug&&(drug.ENTP_NAME    ||drug.entpName))    ||'-',
+        makerNm: drug
+          ? (drug.CNSGN_MANUF && drug.CNSGN_MANUF.trim())
+            ? drug.CNSGN_MANUF
+            : classify(drug) === 'self'
+              ? (drug.ENTP_NAME||'-') + ' (자사제조)'
+              : (drug.INDUTY_TYPE||drug.INDUTY||'-')
+          : '-',
+        mfgType:  classify(drug),
+        isBio:    !!bio,
+        bioDate:  (bio && bio.BIOEQ_PRODT_NOTICE_DATE) ? fmtDate(bio.BIOEQ_PRODT_NOTICE_DATE) : '-',
+        error:    drugR.status==='rejected'?drugR.reason.message:null
+      });
+    } catch(e){
+      results.push({name,found:false,mfgType:'unknown',isBio:false,error:e.message});
+    }
+    renderBulkTable(results);
+    await sleep(300);
+  }
+  setProgress(names.length,names.length,'✅ 완료');
+}
+function stopBulk(){stopFlag=true;}
+function setProgress(cur,total,label){
+  document.getElementById('progressText').textContent = label;
+  document.getElementById('progressCount').textContent = cur+' / '+total;
+  document.getElementById('progressFill').style.width  = ((cur/total)*100)+'%';
+}
+function renderBulkTable(results){
+  const sc = results.filter(r=>r.mfgType==='self').length;
+  const cc = results.filter(r=>r.mfgType==='contract').length;
+  const bc = results.filter(r=>r.isBio).length;
+  const rows = results.map((r,i)=>{
+    const ml = {self:'자사생산',contract:'위탁생산',unknown:'확인필요'}[r.mfgType];
+    const mc = r.error
+      ? '<span style="color:var(--danger);font-size:11px">'+r.error.substring(0,40)+'</span>'
+      : '<span class="badge badge-'+(r.mfgType==='unknown'?'unknown':r.mfgType)+'">'+ml+'</span>';
+    const bc2 = r.isBio?'<span class="badge badge-bio">✓ 생동</span>':'<span style="color:var(--text3)">-</span>';
+    const seqLink = r.itemSeq && r.itemSeq !== '-'
+      ? '<a href="https://nedrug.mfds.go.kr/pbp/CCBBB01/getItemDetail?itemSeq='+r.itemSeq+'" target="_blank" style="color:var(--accent2);font-size:11px;text-decoration:none;">🔗 안전나라</a>'
+      : '-';
+    return '<tr class="row-status-'+(r.error?'error':r.mfgType)+'">'
+      +'<td class="mono">'+(i+1)+'</td><td>'+r.name+'</td>'
+      +'<td>'+(r.itemNm||'-')+'</td><td>'+(r.sellerNm||'-')+'</td>'
+      +'<td>'+(r.makerNm||'-')+'</td><td>'+mc+'</td>'
+      +'<td>'+bc2+'</td>'
+      +'<td style="font-size:12px;color:var(--text2)">'+(r.isBio?(r.bioDate||'-'):'-')+'</td>'
+      +'<td>'+seqLink+'</td></tr>';
+  }).join('');
+  document.getElementById('bulkResult').innerHTML =
+    '<div class="table-section">'
+    +'<div class="table-header">'
+    +'<span class="table-title">조회 결과 ('+results.length+'건)</span>'
+    +'<div class="table-stats">'
+    +'<span class="stat-item"><span class="stat-dot dot-self"></span>자사 '+sc+'</span>'
+    +'<span class="stat-item"><span class="stat-dot dot-contract"></span>위탁 '+cc+'</span>'
+    +'<span class="stat-item"><span class="stat-dot dot-bio"></span>생동 '+bc+'</span>'
+    +'</div>'
+    +'<button class="btn btn-export btn-sm" onclick="exportExcel()">⬇ 엑셀 다운로드</button>'
+    +'</div>'
+    +'<div class="table-wrap"><table>'
+    +'<thead><tr><th>#</th><th>검색어</th><th>품목명</th>'
+    +'<th>허가업체(판매사)</th><th>제조원</th>'
+    +'<th>제조유형</th><th>생동성</th><th>생동 대조약</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div></div>';
+}
+
+// ── 엑셀 내보내기 ───────────────────────────────
+function exportExcel(){
+  const t = document.querySelector('#bulkResult table');
+  if(!t) return;
+  XLSX.writeFile(XLSX.utils.table_to_book(t),'의약품_제조유형_'+today()+'.xlsx');
+}
+
+// ── 유틸 ───────────────────────────────────────
+function fmtDate(s){
+  if(!s) return '-';
+  const d=s.toString().replace(/\D/g,'');
+  return d.length===8?d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6,8):s;
+}
+function today(){return new Date().toISOString().slice(0,10).replace(/-/g,'');}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
