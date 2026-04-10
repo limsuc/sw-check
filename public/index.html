@@ -478,6 +478,50 @@
     margin-bottom: 16px;
     line-height: 1.6;
   }
+
+  /* ── 모드 선택 버튼 ── */
+  .mode-select {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .mode-btn {
+    flex: 1;
+    max-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    cursor: pointer;
+    text-align: left;
+    transition: all .2s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .mode-btn:hover {
+    border-color: var(--accent2);
+    background: rgba(88,166,255,0.06);
+    transform: translateY(-2px);
+  }
+  .mode-btn.active {
+    border-color: var(--accent2);
+    background: rgba(88,166,255,0.1);
+    box-shadow: 0 0 0 1px var(--accent2);
+  }
+  .mode-icon { font-size: 22px; margin-bottom: 4px; }
+  .mode-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .mode-desc {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .mode-btn.active .mode-label { color: var(--accent2); }
 </style>
 </head>
 <body>
@@ -490,35 +534,25 @@
 
 <div class="container">
 
-    <div class="api-row">
-      <input class="api-input" id="apiKey" type="password"
-        placeholder="Decoding 키 (URL 인코딩 없는 일반 키) 입력...">
-      <button class="btn btn-primary btn-sm" onclick="saveKey()">저장</button>
-    </div>
-    <p class="api-hint">
-      🔑 <a href="https://www.data.go.kr/data/15095677/openapi.do" target="_blank">공공데이터포털</a>에서
-      「의약품 제품 허가정보」 및 「생동성시험자료제출의약품 정보」 서비스 신청 후 Decoding 키 사용.
-      입력값은 브라우저 내에만 저장됩니다.
-    </p>
-  </div>
-
-  <!-- TABS -->
-  <div class="tab-row">
-    <button class="tab-btn active" onclick="switchTab('single')">🔍 단건 검색</button>
-    <button class="tab-btn" onclick="switchTab('bulk')">📂 엑셀 일괄 조회</button>
+  <!-- 모드 선택 버튼 -->
+  <div class="mode-select">
+    <button class="mode-btn active" id="btnSingle" onclick="switchTab('single')">
+      <span class="mode-icon">🔍</span>
+      <span class="mode-label">단건 검색</span>
+      <span class="mode-desc">제품명으로 직접 조회</span>
+    </button>
+    <button class="mode-btn" id="btnBulk" onclick="switchTab('bulk')">
+      <span class="mode-icon">📂</span>
+      <span class="mode-label">엑셀 일괄 조회</span>
+      <span class="mode-desc">여러 제품 한번에 조회</span>
+    </button>
   </div>
 
   <!-- SINGLE TAB -->
   <div id="tab-single" class="tab-pane active">
     <div class="search-section">
-      <div class="section-label">제품명 검색</div>
-      <div class="notice-box">
-        ℹ️ <strong>자사 vs 위탁 판별 방법:</strong> 허가 업체명(판매사)과 제조원이 동일하면 <b>자사생산</b>, 다르면 <b>위탁생산</b>으로 분류합니다.
-        생동성인정품목은 식약처 별도 API로 확인합니다.<br>
-        ⚡ <strong>식품의약품안전처 공공데이터 기반</strong> — 의약품 자사/위탁/생동성 실시간 조회 서비스
-      </div>
       <div class="search-row">
-        <input class="search-input" id="drugSearch" placeholder="예) 아모잘탄정, 리피로우캡슐, 플라빅스정..."
+        <input class="search-input" id="drugSearch" placeholder="제품명 입력 (예: 아모잘탄정, 리피로우캡슐...)"
           onkeydown="if(event.key==='Enter') searchSingle()">
         <button class="btn btn-primary" id="searchBtn" onclick="searchSingle()">검색</button>
       </div>
@@ -529,16 +563,11 @@
   <!-- BULK TAB -->
   <div id="tab-bulk" class="tab-pane">
     <div class="excel-section">
-      <div class="section-label">엑셀 파일 업로드</div>
-      <div class="notice-box">
-        📋 제품명이 입력된 엑셀(.xlsx, .xls) 또는 CSV 파일을 업로드하세요. 열 선택 후 일괄 조회합니다.
-        API 속도 제한으로 인해 검색 간 0.5초 딜레이가 적용됩니다.
-      </div>
       <div class="drop-zone" id="dropZone">
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
         <div class="drop-icon">📄</div>
-        <div class="drop-text">파일을 드래그하거나 클릭해서 업로드</div>
-        <div class="drop-sub">.xlsx / .xls / .csv 지원</div>
+        <div class="drop-text">엑셀 파일을 드래그하거나 클릭해서 업로드</div>
+        <div class="drop-sub">.xlsx / .xls / .csv — 1행 헤더, 2행부터 제품명</div>
       </div>
       <div class="excel-controls" id="excelControls" style="display:none">
         <div>
@@ -577,10 +606,10 @@ window.onload = () => { setupDrop(); };
 
 function getKey() { return ""; }
 function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach((b,i) =>
-    b.classList.toggle('active',(i===0&&tab==='single')||(i===1&&tab==='bulk')));
+  document.getElementById('btnSingle').classList.toggle('active', tab==='single');
+  document.getElementById('btnBulk').classList.toggle('active',   tab==='bulk');
   document.getElementById('tab-single').classList.toggle('active', tab==='single');
-  document.getElementById('tab-bulk').classList.toggle('active',  tab==='bulk');
+  document.getElementById('tab-bulk').classList.toggle('active',   tab==='bulk');
 }
 
 // ── API 호출 (프록시 경유) ─────────────────────
