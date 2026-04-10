@@ -575,21 +575,7 @@ const EP_BIO       = '/1471000/MdcBioEqInfoService01/getMdcBioEqList01';
 // ── Init ───────────────────────────────────────
 window.onload = () => { setupDrop(); };
 
-async function checkProxy() {
-  const el = document.getElementById('proxyStatus');
-  try {
-    await fetch(PROXY + '/ping');
-    el.textContent = '🟢 프록시 연결됨';
-    el.style.color = 'var(--accent)';
-  } catch(e) {
-    el.textContent = '🔴 프록시 미연결 — 프록시_실행.bat 실행 필요';
-    el.style.color = 'var(--danger)';
-  }
-}
-
 function getKey() { return ""; }
-  return API_KEY;
-}
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach((b,i) =>
     b.classList.toggle('active',(i===0&&tab==='single')||(i===1&&tab==='bulk')));
