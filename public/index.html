@@ -683,6 +683,24 @@
 <!-- 프린트용 숨김 영역 -->
 <div class="print-area" id="printArea"></div>
 
+<!-- 공유 목록 모달 (URL ?share= 로 열림) -->
+<div class="modal-overlay" id="shareModal" onclick="closeShareModalOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <div>
+        <span class="modal-title">📨 공유받은 목록</span>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px" id="shareModalMeta"></div>
+      </div>
+      <button class="modal-close" onclick="closeShareModal()">✕ 닫기</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-sm" onclick="printSharedList()">🖨️ 인쇄</button>
+      <button class="btn btn-export btn-sm" onclick="copySharedList()">📋 텍스트 복사</button>
+    </div>
+    <div id="shareListItems"></div>
+  </div>
+</div>
+
 <div class="container">
 
   <!-- 모드 선택 버튼 -->
@@ -780,7 +798,17 @@ function lookupPrice(itemSeq, itemName) {
 }
 
 // ── Init ───────────────────────────────────────
-window.onload = () => { setupDrop(); loadPriceDB(); updateFloatBtn(); };
+window.onload = () => {
+  setupDrop();
+  loadPriceDB();
+  updateFloatBtn();
+  // ?share= 파라미터 감지 → 공유 모달 자동 팝업
+  const params = new URLSearchParams(location.search);
+  const shareData = params.get('share');
+  if (shareData) {
+    setTimeout(() => openShareModal(shareData), 300);
+  }
+};
 
 function getKey() { return ""; }
 function switchTab(tab) {
@@ -1251,11 +1279,97 @@ function copyList() {
 }
 
 function shareList() {
-  const text = myList.map(i => i.name).join(',');
-  const url = location.origin + '?list=' + encodeURIComponent(text);
+  if (!myList.length) { alert('목록이 비어있습니다.'); return; }
+  // 각 항목을 압축해서 URL에 인코딩
+  // 형식: name|mfgLabel|price|seller|maker|isBio|pack
+  const encoded = myList.map(i =>
+    [i.name, i.mfgLabel, i.price, i.seller, i.maker, i.isBio?'1':'0', i.pack].join('|')
+  ).join(';;');
+  const url = location.origin + '?share=' + encodeURIComponent(encoded);
   navigator.clipboard.writeText(url).then(() =>
-    alert('공유 링크가 클립보드에 복사됐어요!\n상대방이 링크를 열면 목록을 볼 수 있어요.')
+    alert('공유 링크가 클립보드에 복사됐어요!\n링크를 열면 이 목록이 바로 팝업으로 표시됩니다.')
   );
+}
+
+// ── 공유 모달 함수 ──────────────────────────────
+let sharedList = [];
+
+function openShareModal(encoded) {
+  try {
+    sharedList = decodeURIComponent(encoded).split(';;').map(row => {
+      const parts = row.split('|');
+      return {
+        name:     parts[0] || '',
+        mfgLabel: parts[1] || '-',
+        price:    parts[2] || '-',
+        seller:   parts[3] || '-',
+        maker:    parts[4] || '-',
+        isBio:    parts[5] === '1',
+        pack:     parts[6] || '-'
+      };
+    }).filter(i => i.name);
+  } catch(e) { return; }
+  if (!sharedList.length) return;
+  document.getElementById('shareModalMeta').textContent =
+    '총 ' + sharedList.length + '개 품목';
+  renderShareModal();
+  document.getElementById('shareModal').classList.add('open');
+}
+
+function closeShareModal() {
+  document.getElementById('shareModal').classList.remove('open');
+  // URL에서 share 파라미터 제거
+  const url = new URL(location.href);
+  url.searchParams.delete('share');
+  history.replaceState({}, '', url);
+}
+
+function closeShareModalOutside(e) {
+  if (e.target === document.getElementById('shareModal')) closeShareModal();
+}
+
+function renderShareModal() {
+  const mfgColors = { '자사생산':'var(--self)', '위탁생산':'var(--contract)' };
+  document.getElementById('shareListItems').innerHTML = sharedList.map((item, i) =>
+    '<div class="list-item-card">'
+    + '<div class="list-item-info">'
+    +   '<div class="list-item-name">' + item.name + '</div>'
+    +   '<div class="list-item-meta">'
+    +     '<span style="color:' + (mfgColors[item.mfgLabel]||'var(--text3)') + '">● ' + item.mfgLabel + '</span>'
+    +     '<span>' + item.seller + '</span>'
+    +     (item.price !== '-' ? '<span style="color:var(--accent)">💊 ' + item.price + '</span>' : '')
+    +     (item.isBio ? '<span style="color:var(--bio)">생동성인정</span>' : '')
+    +   '</div>'
+    +   '<div style="font-size:11px;color:var(--text3);margin-top:4px">제조원: ' + item.maker + ' | 포장: ' + item.pack + '</div>'
+    + '</div>'
+    + '</div>'
+  ).join('');
+}
+
+function printSharedList() {
+  const lines = sharedList.map((item, i) =>
+    (i+1) + '. ' + item.name + '
+   업체: ' + item.seller + ' | 제조유형: ' + item.mfgLabel + ' | 약가: ' + item.price + '
+   제조원: ' + item.maker + ' | 포장: ' + item.pack + (item.isBio ? ' | 생동성인정' : '')
+  ).join('
+
+');
+  const win = window.open('', '_blank');
+  win.document.write('<html><head><title>공유 의약품 목록</title>'
+    + '<style>body{font-family:"Noto Sans KR",sans-serif;padding:30px;font-size:13px;line-height:2}'
+    + 'h2{font-size:16px;margin-bottom:20px} pre{white-space:pre-wrap}</style></head>'
+    + '<body><h2>📋 공유 의약품 목록 (' + sharedList.length + '건) — ' + new Date().toLocaleDateString('ko-KR') + '</h2>'
+    + '<pre>' + lines + '</pre></body></html>');
+  win.document.close();
+  win.print();
+}
+
+function copySharedList() {
+  const lines = sharedList.map((item, i) =>
+    (i+1) + '. ' + item.name + ' | ' + item.mfgLabel + ' | ' + item.price + ' | ' + item.seller
+  ).join('
+');
+  navigator.clipboard.writeText(lines).then(() => alert('클립보드에 복사됐어요!'));
 }
 
 function fmtDate(s){
