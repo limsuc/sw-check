@@ -610,8 +610,35 @@ const EP_DRUG_LIST = '/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnInq07'
 const EP_DRUG_DTL  = '/1471000/DrugPrdtPrmsnInfoService07/getDrugPrdtPrmsnDtlInq06';
 const EP_BIO       = '/1471000/MdcBioEqInfoService01/getMdcBioEqList01';
 
+// ── 약가 데이터 (로컬 JSON) ──────────────────────
+let priceDB = null;
+async function loadPriceDB() {
+  if (priceDB) return priceDB;
+  try {
+    const res = await fetch('/drugprice.json');
+    priceDB = await res.json();
+  } catch(e) { priceDB = { code:{}, name:{} }; }
+  return priceDB;
+}
+function lookupPrice(itemSeq, itemName) {
+  if (!priceDB) return null;
+  // 1순위: 제품코드 매칭
+  if (itemSeq && priceDB.code[itemSeq]) return priceDB.code[itemSeq];
+  // 2순위: 제품명 매칭 (규격 제거 후)
+  if (itemName) {
+    const short = itemName.split('_(')[0].trim();
+    if (priceDB.name[short]) return priceDB.name[short];
+    // 부분 매칭
+    const key = Object.keys(priceDB.name).find(k =>
+      k.startsWith(short.substring(0, Math.min(short.length, 10)))
+    );
+    if (key) return priceDB.name[key];
+  }
+  return null;
+}
+
 // ── Init ───────────────────────────────────────
-window.onload = () => { setupDrop(); };
+window.onload = () => { setupDrop(); loadPriceDB(); };
 
 function getKey() { return ""; }
 function switchTab(tab) {
@@ -785,6 +812,7 @@ function renderSingle(query, drugs, bios, errMsg) {
       +'</div>'
       +'<div class="result-grid">'
       +  fd('포장규격', packUnit)
+      +  fd('보험상한금액', priceStr + (priceSpec ? ' <span style="font-size:11px;color:var(--text3)">/ '+priceSpec+'</span>' : ''))
       +  fd('허가(변경)일', fmtDate(apprDate))
       +  fd('허가업체 (판매사)', sellerNm)
       +  fd('제조원', makerNm)
