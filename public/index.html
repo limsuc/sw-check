@@ -973,11 +973,17 @@ function renderSingle(query, drugs, bios, errMsg) {
         ? '<a href="https://nedrug.mfds.go.kr/pbp/CCBBB01/getItemDetail?itemSeq='+itemSeq+'" '
           + 'target="_blank" class="nedrug-link">🔗 의약품안전나라에서 상세 확인</a>'
         : '')
-      + '<button class="add-to-list-btn" id="addbtn_'+itemSeq+'" onclick="addToList('+JSON.stringify({
-          seq: itemSeq, name: itemNm, seller: sellerNm, maker: makerNm,
-          mfgType: mfgType, mfgLabel: mfgLabel, isBio: isBio,
-          price: priceStr, pack: packUnit, ingr: ingr.substring(0,80)
-        })+')">＋ 목록에 추가</button>'
+      + '<button class="add-to-list-btn" id="addbtn_'+itemSeq+'"'
+      + ' data-seq="'+itemSeq+'"'
+      + ' data-name="'+itemNm.replace(/"/g,'&quot;')+'"'
+      + ' data-seller="'+sellerNm.replace(/"/g,'&quot;')+'"'
+      + ' data-maker="'+makerNm.replace(/"/g,'&quot;')+'"'
+      + ' data-mfgtype="'+mfgType+'"'
+      + ' data-mfglabel="'+mfgLabel+'"'
+      + ' data-isbio="'+(isBio?'1':'0')+'"'
+      + ' data-price="'+priceStr.replace(/"/g,'&quot;')+'"'
+      + ' data-pack="'+packUnit.replace(/"/g,'&quot;')+'"'
+      + ' onclick="addToListFromBtn(this)">＋ 목록에 추가</button>'
       +'</div>';
   }).join('');
 
@@ -1141,6 +1147,21 @@ function updateFloatBtn() {
   } else {
     btn.style.display = 'none';
   }
+}
+
+function addToListFromBtn(btn) {
+  const item = {
+    seq:      btn.dataset.seq,
+    name:     btn.dataset.name,
+    seller:   btn.dataset.seller,
+    maker:    btn.dataset.maker,
+    mfgType:  btn.dataset.mfgtype,
+    mfgLabel: btn.dataset.mfglabel,
+    isBio:    btn.dataset.isbio === '1',
+    price:    btn.dataset.price,
+    pack:     btn.dataset.pack
+  };
+  addToList(item);
 }
 
 function addToList(item) {
