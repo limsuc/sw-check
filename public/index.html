@@ -788,6 +788,10 @@ function renderSingle(query, drugs, bios, errMsg) {
     const chartNm  = drug.CHART || '-';  // 성상 (CHART 필드)
     const packUnit  = drug.PACK_UNIT || drug.packUnit || '-';  // 포장규격
     const ingr     = drug.MAIN_ITEM_INGR  || drug.mainItemIngr   || '-';
+    // 약가 조회
+    const priceInfo = lookupPrice(itemSeq, itemNm);
+    const priceStr  = priceInfo ? priceInfo[0] : '-';
+    const priceSpec = priceInfo ? (priceInfo[1] ? priceInfo[1]+priceInfo[2] : '') : '';
     const mfgLabel = {self:'자사생산',contract:'위탁생산',unknown:'확인필요'}[mfgType];
     const mfgBadge = 'badge-'+(mfgType==='unknown'?'unknown':mfgType);
     // ITEM_SEQ 우선 매칭, fallback으로 품목명 매칭
