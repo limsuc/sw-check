@@ -1348,12 +1348,8 @@ function renderShareModal() {
 
 function printSharedList() {
   const lines = sharedList.map((item, i) =>
-    (i+1) + '. ' + item.name + '
-   업체: ' + item.seller + ' | 제조유형: ' + item.mfgLabel + ' | 약가: ' + item.price + '
-   제조원: ' + item.maker + ' | 포장: ' + item.pack + (item.isBio ? ' | 생동성인정' : '')
-  ).join('
-
-');
+    (i+1) + '. ' + item.name + '\n   업체: ' + item.seller + ' | 제조유형: ' + item.mfgLabel + ' | 약가: ' + item.price + '\n   제조원: ' + item.maker + ' | 포장: ' + item.pack + (item.isBio ? ' | 생동성인정' : '')
+  ).join('\n\n');
   const win = window.open('', '_blank');
   win.document.write('<html><head><title>공유 의약품 목록</title>'
     + '<style>body{font-family:"Noto Sans KR",sans-serif;padding:30px;font-size:13px;line-height:2}'
@@ -1367,8 +1363,7 @@ function printSharedList() {
 function copySharedList() {
   const lines = sharedList.map((item, i) =>
     (i+1) + '. ' + item.name + ' | ' + item.mfgLabel + ' | ' + item.price + ' | ' + item.seller
-  ).join('
-');
+  ).join('\n');
   navigator.clipboard.writeText(lines).then(() => alert('클립보드에 복사됐어요!'));
 }
 
